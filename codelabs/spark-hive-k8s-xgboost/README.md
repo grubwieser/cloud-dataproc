@@ -15,7 +15,31 @@ https://cloud.google.com/solutions/using-apache-hive-on-cloud-dataproc#initializ
 
 https://cloud.google.com/dataproc/docs/concepts/jobs/dataproc-gke
 
-#### 1.3. Run Spark & Hive job 
+### 1.3. Create GCS bucket and copy mortgage data to Bucket
+
+Create bucket in your project
+
+```
+export REGION=us-central1
+export PROJECT=$(gcloud info --format='value(config.project)')
+export GCS_BUCKET=gs://${PROJECT}-rapids
+
+gsutil mb -l ${REGION} ${GCS_BUCKET}
+```
+
+Copy data to your GCS bucket
+
+
+```
+gsutil cp -r gs://dataproc-datalake-datasets/mortgage-small ${GCS_BUCKET}
+```
+
+
+
+
+
+
+#### 1.4. Run Spark & Hive job 
 
 Run PySpark job to convert CSV to save Hive Table (Parquet) using Spark on Kubernetes 
 
@@ -42,7 +66,7 @@ gcloud dataproc jobs submit pyspark spark_csv_hive_parquet.py \
   --region $REGION
 ```
 
-#### 1.4 Run Spark job on Hive cluster
+#### 1.5 Run Hive job on Hive cluster
 
 Run a hive job on the hive cluster to check tables were created correctly
 
@@ -84,6 +108,7 @@ python create_gpu_metrics.py
 [Rapids - initialization action](https://github.com/GoogleCloudDataproc/initialization-actions/tree/86c01a06b89b950033949b2d6cac5153c88a2807/rapids)
 [GPU initialization action](https://github.com/GoogleCloudDataproc/initialization-actions/tree/86c01a06b89b950033949b2d6cac5153c88a2807/gpu)
 
+```
 export PROJECT=$(gcloud info --format='value(config.project)')
 export CLUSTER_NAME=rapids-cluster
 export GCS_BUCKET=gs://${PROJECT}-rapids
@@ -107,6 +132,7 @@ gcloud beta dataproc clusters create $CLUSTER_NAME \
     --subnet=default \
     --metadata install-gpu-agent=true \
     --scopes https://www.googleapis.com/auth/monitoring.write
+```
 
 #### 2.4. Open JupyterLab on Dataproc - EDA notebook
 
