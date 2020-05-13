@@ -38,14 +38,14 @@ export REGION=us-central1
 export ZONE=us-central1-a
 gcloud config set compute/zone ${ZONE}
 
-gcloud sql instances create hive-metastore-2 \
+gcloud sql instances create hive-metastore \
     --database-version="MYSQL_5_7" \
     --activation-policy=ALWAYS \
     --zone ${ZONE}
 ```
 
 ```
-gcloud dataproc clusters create hive-cluster-2 \
+gcloud dataproc clusters create hive-cluster \
     --scopes sql-admin \
     --image-version 1.4 \
     --region ${REGION} \
