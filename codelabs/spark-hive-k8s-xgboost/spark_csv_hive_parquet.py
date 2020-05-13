@@ -12,65 +12,77 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+An example for reading CSV to Spark DataFrame and saving DataFrame as Hive table
+"""
+
+from __future__ import print_function
+
+import sys
+
+from pyspark.sql import SparkSession
 from pyspark.sql.types import FloatType, IntegerType, StructField, StructType
 from pyspark.sql.functions import col
-from pyspark.sql import SparkSession
 
-## Data Warehosue location. Optional
-warehouse_location = 'gs://dataproc-datalake-warehouse/datasets'
+## CSV file location
+csv_location = sys.argv[1]
+
+## Data Warehosue location. 
+# 'gs://<project-id>-warehouse/datasets'
+warehouse_location = sys.argv[2]
 
 ## Hive Metastore service on Dataproc cluster
 service_endpoint = 'thrift://hive-cluster-m:9083'
 
-## Create Spark session and enable Hive support
+if __name__ == "__main__":
+  ## Create Spark session and enable Hive support
+  spark = SparkSession.builder \
+    .appName('Google Cloud Storage CSV to Hive Table Parquet') \
+    .config("hive.metastore.uris", service_endpoint) \
+    .config("spark.sql.warehouse.dir", warehouse_location) \
+    .enableHiveSupport() \
+    .getOrCreate()
 
-spark = SparkSession.builder \
-  .appName('Google Cloud Storage CSV to Hive Table Parquet') \
-  .config("hive.metastore.uris", service_endpoint) \
-  .config("spark.sql.warehouse.dir", warehouse_location) \
-  .enableHiveSupport() \
-  .getOrCreate()
+  label = 'delinquency_12'
 
-label = 'delinquency_12'
+  schema = StructType([
+      StructField('orig_channel', FloatType()),
+      StructField('first_home_buyer', FloatType()),
+      StructField('loan_purpose', FloatType()),
+      StructField('property_type', FloatType()),
+      StructField('occupancy_status', FloatType()),
+      StructField('property_state', FloatType()),
+      StructField('product_type', FloatType()),
+      StructField('relocation_mortgage_indicator', FloatType()),
+      StructField('seller_name', FloatType()),
+      StructField('mod_flag', FloatType()),
+      StructField('orig_interest_rate', FloatType()),
+      StructField('orig_upb', IntegerType()),
+      StructField('orig_loan_term', IntegerType()),
+      StructField('orig_ltv', FloatType()),
+      StructField('orig_cltv', FloatType()),
+      StructField('num_borrowers', FloatType()),
+      StructField('dti', FloatType()),
+      StructField('borrower_credit_score', FloatType()),
+      StructField('num_units', IntegerType()),
+      StructField('zip', IntegerType()),
+      StructField('mortgage_insurance_percent', FloatType()),
+      StructField('current_loan_delinquency_status', IntegerType()),
+      StructField('current_actual_upb', FloatType()),
+      StructField('interest_rate', FloatType()),
+      StructField('loan_age', FloatType()),
+      StructField('msa', FloatType()),
+      StructField('non_interest_bearing_upb', FloatType()),
+      StructField(label, IntegerType()),
+  ])
 
-schema = StructType([
-    StructField('orig_channel', FloatType()),
-    StructField('first_home_buyer', FloatType()),
-    StructField('loan_purpose', FloatType()),
-    StructField('property_type', FloatType()),
-    StructField('occupancy_status', FloatType()),
-    StructField('property_state', FloatType()),
-    StructField('product_type', FloatType()),
-    StructField('relocation_mortgage_indicator', FloatType()),
-    StructField('seller_name', FloatType()),
-    StructField('mod_flag', FloatType()),
-    StructField('orig_interest_rate', FloatType()),
-    StructField('orig_upb', IntegerType()),
-    StructField('orig_loan_term', IntegerType()),
-    StructField('orig_ltv', FloatType()),
-    StructField('orig_cltv', FloatType()),
-    StructField('num_borrowers', FloatType()),
-    StructField('dti', FloatType()),
-    StructField('borrower_credit_score', FloatType()),
-    StructField('num_units', IntegerType()),
-    StructField('zip', IntegerType()),
-    StructField('mortgage_insurance_percent', FloatType()),
-    StructField('current_loan_delinquency_status', IntegerType()),
-    StructField('current_actual_upb', FloatType()),
-    StructField('interest_rate', FloatType()),
-    StructField('loan_age', FloatType()),
-    StructField('msa', FloatType()),
-    StructField('non_interest_bearing_upb', FloatType()),
-    StructField(label, IntegerType()),
-])
+  train_url = f'{csv_location}/train'
+  eval_url = f'{csv_location}/eval'
 
-train_url = 'gs://dataproc-datalake-xgboost/mortgage-small/train'
-eval_url = 'gs://dataproc-datalake-xgboost/mortgage-small/eval'
+  train_data = spark.read.schema(schema).option('header', True).csv(train_url)
+  eval_data = spark.read.schema(schema).option('header', True).csv(eval_url)
 
-train_data = spark.read.schema(schema).option('header', True).csv(train_url)
-eval_data = spark.read.schema(schema).option('header', True).csv(eval_url)
+  train_data.write.mode('overwrite').format("parquet").saveAsTable("mortgage.mortgage_small_train")
+  eval_data.write.mode('overwrite').format("parquet").saveAsTable("mortgage.mortgage_small_eval")
 
-train_data.write.mode('overwrite').format("parquet").saveAsTable("mortgage_small_train")
-eval_data.write.mode('overwrite').format("parquet").saveAsTable("mortgage_small_eval")
-
-spark.stop()
+  spark.stop()

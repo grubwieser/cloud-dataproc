@@ -5,15 +5,142 @@ This codelab contains 2 parts to show how a data engineer and data scientist mig
 1. Data Engineer: Hive Metastore and Spark k8s - Transform and save data in a Hive data warehouse
 2. Data Scientist: Spark, GPUs and Jupyter notebooks - Read data from Hive data warehouse
 
+### Set-up Environment
+
+#### Set GCP project, region and zone
+
+```
+gcloud config set project <project-id>
+export REGION=us-central1
+export ZONE=us-central1-a
+gcloud config set compute/zone ${ZONE}
+```
+
+#### Enable product APIs 
+
+```
+gcloud services enable dataproc.googleapis.com \
+  sqladmin.googleapis.com \
+  compute.googleapis.com \
+  storage-component.googleapis.com \
+  container.googleapis.com
+```
+
 ### 1. Data Engineer: Hive Metastore and Spark k8s - Transform and save data in a Hive data warehouse
 
 #### 1.1. Create Hive Metastore on Dataproc 
 
 https://cloud.google.com/solutions/using-apache-hive-on-cloud-dataproc#initialize_the_environment
 
+```
+export PROJECT=$(gcloud info --format='value(config.project)')
+export REGION=us-central1
+export ZONE=us-central1-a
+gcloud config set compute/zone ${ZONE}
+
+gcloud sql instances create hive-metastore-2 \
+    --database-version="MYSQL_5_7" \
+    --activation-policy=ALWAYS \
+    --zone ${ZONE}
+```
+
+```
+gcloud dataproc clusters create hive-cluster-2 \
+    --scopes sql-admin \
+    --image-version 1.4 \
+    --region ${REGION} \
+    --zone ${ZONE} \
+    --initialization-actions gs://goog-dataproc-initialization-actions-${REGION}/cloud-sql-proxy/cloud-sql-proxy.sh \
+    --properties hive:hive.metastore.warehouse.dir=gs://${PROJECT}-warehouse/datasets \
+    --metadata "hive-metastore-instance=${PROJECT}:${REGION}:hive-metastore"
+```
+
+Create the test transactions Hive table and run hive job to test table was created
+
+```
+gcloud dataproc jobs submit hive \
+    --cluster hive-cluster \
+    --region ${REGION} \
+    --execute "
+      SELECT *
+      FROM transactions
+      LIMIT 10;"
+```
+
+Create a new database called mortgage
+
+```
+gcloud dataproc jobs submit hive \
+    --cluster hive-cluster \
+    --region ${REGION} \
+    --execute "CREATE DATABASE mortgage;"
+```
+
+Check the new database was created
+
+```
+gcloud dataproc jobs submit hive \
+    --cluster hive-cluster \
+    --region ${REGION} \
+    --execute "SHOW DATABASES;"
+```
+
 #### 1.2. Create Dataproc on GKE cluster 
 
 https://cloud.google.com/dataproc/docs/concepts/jobs/dataproc-gke
+
+```
+export GKE_CLUSTER=gke-demo-cluster 
+export REGION=us-central1
+export ZONE=us-central1-a
+
+gcloud beta container clusters create "${GKE_CLUSTER}" \
+    --scopes cloud-platform \
+    --workload-metadata-from-node GCE_METADATA \
+    --machine-type n1-standard-4 \
+    --region "${REGION}"
+    --zone "${ZONE}"
+```
+
+Create bucket in your project to be used for the cluster
+
+```
+export REGION=us-central1
+export PROJECT=$(gcloud info --format='value(config.project)')
+export GCS_BUCKET=gs://${PROJECT}-dp-gke
+
+gsutil mb -l ${REGION} ${GCS_BUCKET}
+```
+
+Dataproc's service accounts needs to be granted Kubernetes Engine Admin IAM role
+
+It will be in the format
+
+```
+service-{project-number}@dataproc-accounts.iam.gserviceaccount.com
+```
+
+
+Create the Dataproc on GKE cluster
+
+```
+export GKE_CLUSTER=gke-demo-cluster 
+export DATAPROC_ON_GKE_CLUSTER=dataproc-on-gke-cluster 
+export VERSION=1.4.27-beta 
+export REGION=us-central1
+export PROJECT=$(gcloud info --format='value(config.project)')
+export BUCKET=${PROJECT}-dp-gke
+
+gcloud beta dataproc clusters create "${DATAPROC_ON_GKE_CLUSTER}" \
+    --gke-cluster="${GKE_CLUSTER}" \
+    --region "${REGION}" \
+    --zone "${ZONE}" \
+    --image-version="${VERSION}" \
+    --bucket="${BUCKET}" \
+    --initialization-actions gs://goog-dataproc-initialization-actions-${REGION}/cloud-sql-proxy/cloud-sql-proxy.sh \
+    --metadata  "hive-metastore-instance=${PROJECT}:${REGION}:hive-metastore"
+
+```
 
 ### 1.3. Create GCS bucket and copy mortgage data to Bucket
 
@@ -29,23 +156,25 @@ gsutil mb -l ${REGION} ${GCS_BUCKET}
 
 Copy data to your GCS bucket
 
+```
+gsutil cp -r gs://datalake-demo-datasets/mortgage-small ${GCS_BUCKET}
+```
+
+Check data was copied correctly
 
 ```
-gsutil cp -r gs://dataproc-datalake-datasets/mortgage-small ${GCS_BUCKET}
+gsutil ls ${GCS_BUCKET}/mortgage-small
 ```
 
 
+#### 1.4. Run Spark job to create Hive Table
 
-
-
-
-#### 1.4. Run Spark & Hive job 
-
-Run PySpark job to convert CSV to save Hive Table (Parquet) using Spark on Kubernetes 
+Run a PySpark job to read CSV data and save to a Hive Table (Parquet format) using Spark on Kubernetes 
 
 Clone this repo and then change directory 
 
 ```
+git clone clone https://github.com/tfayyaz/cloud-dataproc.git
 cd codelabs/spark-hive-k8s-xgboost
 ```
 
@@ -55,15 +184,29 @@ Set project id
 gcloud config set project <project-id>
 ```
 
-Submit job to Dataproc on GKE cluster
+Submit job to Dataproc on GKE cluster with the job arguments
+
+- gs://${PROJECT}-rapids/mortgage-small [csv files location]
+- gs://${PROJECT}-warehouse/datasets [hive warehouse location]
 
 ```
-export DATAPROC_GKE_CLUSTER=dataproc-spark-on-composer
+export PROJECT=$(gcloud info --format='value(config.project)')
+export DATAPROC_ON_GKE_CLUSTER=dataproc-on-gke
 export REGION=us-central1 
 
 gcloud dataproc jobs submit pyspark spark_csv_hive_parquet.py \
-  --cluster $DATAPROC_GKE_CLUSTER  \
-  --region $REGION
+  --cluster $DATAPROC_ON_GKE_CLUSTER  \
+  --region $REGION \
+   -- gs://${PROJECT}-rapids/mortgage-small gs://${PROJECT}-warehouse/datasets
+```
+
+If this does not work try on the hive cluster
+
+``
+gcloud dataproc jobs submit pyspark spark_csv_hive_parquet.py \
+  --cluster hive-cluster  \
+  --region $REGION \
+   -- gs://${PROJECT}-rapids/mortgage-small gs://${PROJECT}-warehouse/datasets
 ```
 
 #### 1.5 Run Hive job on Hive cluster
@@ -105,8 +248,8 @@ python create_gpu_metrics.py
 
 #### 2.3. Create Dataproc cluster using Rapids & GPU initialization actions
 
-[Rapids - initialization action](https://github.com/GoogleCloudDataproc/initialization-actions/tree/86c01a06b89b950033949b2d6cac5153c88a2807/rapids)
-[GPU initialization action](https://github.com/GoogleCloudDataproc/initialization-actions/tree/86c01a06b89b950033949b2d6cac5153c88a2807/gpu)
+- [Rapids - initialization action](https://github.com/GoogleCloudDataproc/initialization-actions/tree/86c01a06b89b950033949b2d6cac5153c88a2807/rapids)
+- [GPU initialization action](https://github.com/GoogleCloudDataproc/initialization-actions/tree/86c01a06b89b950033949b2d6cac5153c88a2807/gpu)
 
 ```
 export PROJECT=$(gcloud info --format='value(config.project)')
@@ -123,14 +266,14 @@ gcloud beta dataproc clusters create $CLUSTER_NAME \
     --worker-machine-type n1-highmem-32 \
     --worker-accelerator type=nvidia-tesla-t4,count=2 \
     --optional-components=ANACONDA,JUPYTER \
-    --initialization-actions gs://goog-dataproc-initialization-actions-${REGION}/gpu/install_gpu_driver.sh,gs://goog-dataproc-initialization-actions-${REGION}/rapids/rapids.sh \
+    --initialization-actions gs://goog-dataproc-initialization-actions-${REGION}/cloud-sql-proxy/cloud-sql-proxy.sh,gs://goog-dataproc-initialization-actions-${REGION}/gpu/install_gpu_driver.sh,gs://goog-dataproc-initialization-actions-${REGION}/rapids/rapids.sh \
     --metadata gpu-driver-provider=NVIDIA \
     --metadata rapids-runtime=SPARK \
     --bucket $GCS_BUCKET \
-    --properties "spark:spark.dynamicAllocation.enabled=false,spark:spark.shuffle.service.enabled=false,spark:spark.submit.pyFiles=/usr/lib/spark/jars/xgboost4j-spark_${RAPIDS_SPARK_VERSION}-${RAPIDS_VERSION}.jar" \
+    --properties "hive:hive.metastore.warehouse.dir=gs://${PROJECT}-warehouse/datasets,spark:spark.dynamicAllocation.enabled=false,spark:spark.shuffle.service.enabled=false,spark:spark.submit.pyFiles=/usr/lib/spark/jars/xgboost4j-spark_${RAPIDS_SPARK_VERSION}-${RAPIDS_VERSION}.jar" \
     --enable-component-gateway \
     --subnet=default \
-    --metadata install-gpu-agent=true \
+    --metadata "hive-metastore-instance=${PROJECT}:${REGION}:hive-metastore,install-gpu-agent=true" \
     --scopes https://www.googleapis.com/auth/monitoring.write
 ```
 
