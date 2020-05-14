@@ -1,4 +1,4 @@
-## Apace Spark, Hive, Kubernetes and XGboost codelab
+## Apache Spark, Hive, Kubernetes and XGboost codelab
 
 This codelab contains 2 parts to show how a data engineer and data scientist might use features available in Dataproc.
 
@@ -36,7 +36,6 @@ https://cloud.google.com/solutions/using-apache-hive-on-cloud-dataproc#initializ
 export PROJECT=$(gcloud info --format='value(config.project)')
 export REGION=us-central1
 export ZONE=us-central1-a
-gcloud config set compute/zone ${ZONE}
 
 gcloud sql instances create hive-metastore \
     --database-version="MYSQL_5_7" \
@@ -90,15 +89,13 @@ gcloud dataproc jobs submit hive \
 https://cloud.google.com/dataproc/docs/concepts/jobs/dataproc-gke
 
 ```
-export GKE_CLUSTER=gke-demo-cluster 
-export REGION=us-central1
+export GKE_CLUSTER=gke-single-zone-cluster 
 export ZONE=us-central1-a
 
 gcloud beta container clusters create "${GKE_CLUSTER}" \
     --scopes cloud-platform \
     --workload-metadata-from-node GCE_METADATA \
     --machine-type n1-standard-4 \
-    --region "${REGION}"
     --zone "${ZONE}"
 ```
 
@@ -121,25 +118,24 @@ service-{project-number}@dataproc-accounts.iam.gserviceaccount.com
 ```
 
 
+
 Create the Dataproc on GKE cluster
 
 ```
 export GKE_CLUSTER=gke-demo-cluster 
-export DATAPROC_ON_GKE_CLUSTER=dataproc-on-gke-cluster 
+export DATAPROC_GKE_CLUSTER=gke-cluster 
 export VERSION=1.4.27-beta 
 export REGION=us-central1
+export ZONE=us-central1-a
 export PROJECT=$(gcloud info --format='value(config.project)')
 export BUCKET=${PROJECT}-dp-gke
 
-gcloud beta dataproc clusters create "${DATAPROC_ON_GKE_CLUSTER}" \
+gcloud beta dataproc clusters create "${DATAPROC_GKE_CLUSTER}" \
     --gke-cluster="${GKE_CLUSTER}" \
     --region "${REGION}" \
     --zone "${ZONE}" \
     --image-version="${VERSION}" \
-    --bucket="${BUCKET}" \
-    --initialization-actions gs://goog-dataproc-initialization-actions-${REGION}/cloud-sql-proxy/cloud-sql-proxy.sh \
-    --metadata  "hive-metastore-instance=${PROJECT}:${REGION}:hive-metastore"
-
+    --bucket="${BUCKET}" 
 ```
 
 ### 1.3. Create GCS bucket and copy mortgage data to Bucket
@@ -202,7 +198,7 @@ gcloud dataproc jobs submit pyspark spark_csv_hive_parquet.py \
 
 If this does not work try on the hive cluster
 
-``
+```
 gcloud dataproc jobs submit pyspark spark_csv_hive_parquet.py \
   --cluster hive-cluster  \
   --region $REGION \
