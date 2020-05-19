@@ -7,11 +7,11 @@ This codelab contains 4 parts to show how a data engineer and data scientist can
 3. Data Scientist: Spark and Jupyter notebook to read data from Hive table for EDA
 4. Data Scientist: Spark, GPUs and Jupyter notebooks. Train a XGboost model using Spark and GPUs
 
-### Clone Repo
+## Clone Repo
 
 Clone this repo and then change directory 
 
-```
+```bash
 git clone https://github.com/tfayyaz/cloud-dataproc.git
 cd cloud-dataproc/codelabs/spark-hive-k8s-xgboost
 ```
@@ -20,7 +20,7 @@ cd cloud-dataproc/codelabs/spark-hive-k8s-xgboost
 
 #### Set GCP project, region and zone
 
-```
+```bash
 export PROJECT=$(gcloud info --format='value(config.project)')
 gcloud config set project ${PROJECT}
 export REGION=us-central1
@@ -30,7 +30,7 @@ gcloud config set compute/zone ${ZONE}
 
 #### Enable all product APIs 
 
-```
+```bash
 gcloud services enable dataproc.googleapis.com \
   sqladmin.googleapis.com \
   compute.googleapis.com \
@@ -42,7 +42,7 @@ gcloud services enable dataproc.googleapis.com \
 
 Create bucket in your project to be used for the datalake
 
-```
+```bash
 export PROJECT=$(gcloud info --format='value(config.project)')
 export REGION=us-central1
 
@@ -51,21 +51,21 @@ gsutil mb -l ${REGION} gs://${PROJECT}-datalake
 
 #### Copy all demo mortgage CSV files to your landing zone in GCS
 
-```
+```bash
 gsutil cp -r gs://datalake-demo-datasets/mortgage-small gs://${PROJECT}-datalake/landing/csv/mortgage-small
 ```
 
 #### Check files were copied
 
-```
+```bash
 gsutil ls -l gs://${PROJECT}-datalake/landing/csv/mortgage-small/*
 ```
 
-## 1. Dataproc on GKE
+### 1. Dataproc on GKE
 
 #### 1.1. Create a GKE cluster 
 
-```
+```bash
 export GKE_CLUSTER=gke-single-zone-cluster 
 
 gcloud beta container clusters create "${GKE_CLUSTER}" \
@@ -81,13 +81,13 @@ Dataproc's service accounts needs to be granted Kubernetes Engine Admin IAM role
 
 It will be in the format
 
-```
+```bash
 service-{project-number}@dataproc-accounts.iam.gserviceaccount.com
 ```
 
 #### 1.3. Create the Dataproc on GKE cluster
 
-```
+```bash
 export GKE_CLUSTER=gke-single-zone-cluster 
 export DATAPROC_GKE_CLUSTER=gke-cluster 
 export VERSION=1.4.27-beta 
@@ -107,7 +107,7 @@ gcloud beta dataproc clusters create "${DATAPROC_GKE_CLUSTER}" \
 
 This job will convert the CSV files to Parquet files
 
-```
+```bash
 export PROJECT=$(gcloud info --format='value(config.project)')
 export DATAPROC_GKE_CLUSTER=gke-cluster
 export REGION=us-central1 
@@ -120,15 +120,15 @@ gcloud dataproc jobs submit pyspark spark_csv_parquet.py \
 
 #### 1.5. Check the Parquet files were created
 
-```
+```bash
 gsutil ls -l gs://${PROJECT}-datalake/processed/parquet/*
 ```
 
-## 2. Data Engineer: Hive Metastore - save data in a Hive data warehouse
+### 2. Data Engineer: Hive Metastore - save data in a Hive data warehouse
 
 #### 2.1. Create a CloudSQL instance to be used by the Hive metastore
 
-```
+```bash
 export REGION=us-central1
 export ZONE=us-central1-f
 
@@ -142,7 +142,7 @@ gcloud sql instances create hive-metastore-cloudsql \
 
 This is a long running cluster and will be your hive metastore service
 
-```
+```bash
 export PROJECT=$(gcloud info --format='value(config.project)')
 export REGION=us-central1
 export ZONE=us-central1-f
@@ -160,7 +160,7 @@ gcloud dataproc clusters create hive-cluster \
 
 #### 2.3. Create a new Hive database called mortgage
 
-```
+```bash
 export REGION=us-central1
 
 gcloud dataproc jobs submit hive \
@@ -171,7 +171,7 @@ gcloud dataproc jobs submit hive \
 
 #### 2.4. Check the new Hive database was created
 
-```
+```bash
 export REGION=us-central1
 
 gcloud dataproc jobs submit hive \
@@ -184,7 +184,7 @@ gcloud dataproc jobs submit hive \
 
 Training data
 
-```
+```bash
 gcloud dataproc jobs submit hive \
     --cluster hive-cluster \
     --region ${REGION} \
@@ -224,7 +224,7 @@ gcloud dataproc jobs submit hive \
 
 Eval data
 
-```
+```bash
 gcloud dataproc jobs submit hive \
     --cluster hive-cluster \
     --region ${REGION} \
@@ -264,7 +264,7 @@ gcloud dataproc jobs submit hive \
 
 #### 2.6. Run hive jobs to test tables was created
 
-```
+```bash
 gcloud dataproc jobs submit hive \
     --cluster hive-cluster \
     --region ${REGION} \
@@ -274,7 +274,7 @@ gcloud dataproc jobs submit hive \
       LIMIT 10;"
 ```
 
-```
+```bash
 gcloud dataproc jobs submit hive \
     --cluster hive-cluster \
     --region ${REGION} \
@@ -286,7 +286,7 @@ gcloud dataproc jobs submit hive \
 
 #### 2.7. Run Spark with Hive enabled to test table was created (Optional)
 
-```
+```bash
 export PROJECT=$(gcloud info --format='value(config.project)')
 export REGION=us-central1
 
@@ -296,7 +296,7 @@ gcloud dataproc jobs submit pyspark spark_read_hive.py \
    -- gs://${PROJECT}-datalake/processed/parquet
 ```
 
-```
+```bash
 export PROJECT=$(gcloud info --format='value(config.project)')
 export REGION=us-central1
 
@@ -307,13 +307,13 @@ gcloud dataproc jobs submit pyspark spark_read_hive.py \
 ```
 
 
-## 3. Data Scientist: Spark, GPUs and Jupyter notebooks - Read data from Hive data warehouse
+### 3. Data Scientist: Spark, GPUs and Jupyter notebooks - Read data from Hive data warehouse
 
 #### 3.1. Create custom GPU metrics for Stackdriver Monitoring (optional)
 
 https://github.com/GoogleCloudPlatform/ml-on-gcp/tree/master/dlvm/gcp-gpu-utilization-metrics
 
-```
+```bash
 git clone https://github.com/GoogleCloudPlatform/ml-on-gcp.git
 cd ml-on-gcp/dlvm/gcp-gpu-utilization-metrics 
 pip install -r ./requirements.txt
@@ -326,7 +326,7 @@ python create_gpu_metrics.py
 - [GPU initialization action](https://github.com/GoogleCloudDataproc/initialization-actions/tree/86c01a06b89b950033949b2d6cac5153c88a2807/gpu)
 
 
-```
+```bash
 export PROJECT=$(gcloud info --format='value(config.project)')
 export CLUSTER_NAME=jupyter-cluster
 export GCS_BUCKET=${PROJECT}-datalake
@@ -360,7 +360,7 @@ Copy the Mortgage Hive Exploratory Data Analysis notebook to your notebooks fold
 
 This notebook uses a python 3 kernel so you can modify the Spark session
 
-```
+```bash
 export PROJECT=$(gcloud info --format='value(config.project)')
 
 gsutil cp mortgage_hive_eda.ipynb gs://${PROJECT}-datalake/notebooks/jupyter/mortgage_hive_eda.ipynb
@@ -374,7 +374,7 @@ Copy the mortgage_xgboost_gpu notebook to your notebooks folder
 
 This uses a PySpark kernel
 
-```
+```bash
 export PROJECT=$(gcloud info --format='value(config.project)')
 
 gsutil cp mortgage_xgboost_gpu.ipynb gs://${PROJECT}-datalake/notebooks/jupyter/mortgage_xgboost_gpu.ipynb
