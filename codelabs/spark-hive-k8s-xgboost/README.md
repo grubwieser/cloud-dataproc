@@ -2,10 +2,15 @@
 
 This codelab contains 4 parts to show how a data engineer and data scientist can use features available in Cloud Dataproc.
 
-1. Data Engineer: Dataproc on GKE - Transform CSV to Parquet using Spark on k8s
-2. Data Engineer: Hive jobs and Hive Metastore. Create Hive Metastore Cluster and create Hive external table
+1. Data Engineer: Hive Metastore. Create Hive Metastore Cluster
+2. Data Engineer: Dataproc on GKE - Transform CSV to Hive tables using Spark on k8s
 3. Data Scientist: Spark and Jupyter notebook to read data from Hive table for EDA
 4. Data Scientist: Spark, GPUs and Jupyter notebooks. Train a XGboost model using Spark and GPUs
+5. Data Scientist & Data Engineer: Save model and run batch predictions using Cloud Composer
+
+## Mortgage dataset
+
+This dataset is made avaiable by 
 
 ## Clone Repo
 
@@ -22,13 +27,11 @@ cd cloud-dataproc/codelabs/spark-hive-k8s-xgboost
 
 ```bash
 export PROJECT=$(gcloud info --format='value(config.project)')
-gcloud config set project ${PROJECT}
 export REGION=us-central1
 export ZONE=us-central1-f
-gcloud config set compute/zone ${ZONE}
 ```
 
-#### Enable all product APIs 
+#### Enable all product APIs
 
 ```bash
 gcloud services enable dataproc.googleapis.com \
@@ -61,9 +64,63 @@ gsutil cp -r gs://datalake-demo-datasets/mortgage-small gs://${PROJECT}-datalake
 gsutil ls -l gs://${PROJECT}-datalake/landing/csv/mortgage-small/*
 ```
 
-### 1. Dataproc on GKE
+### 1. Data Engineer: Hive Metastore - save data in a Hive data warehouse
 
-#### 1.1. Create a GKE cluster 
+#### 1.1. Create a CloudSQL instance to be used by the Hive metastore
+
+```bash
+export REGION=us-central1
+export ZONE=us-central1-f
+
+gcloud sql instances create hive-metastore \
+    --database-version="MYSQL_5_7" \
+    --activation-policy=ALWAYS \
+    --zone ${ZONE}
+```
+
+#### 1.2. Create a Hive Dataproc cluster
+
+This is a long running cluster and will be your hive metastore service
+
+```bash
+export PROJECT=$(gcloud info --format='value(config.project)')
+export REGION=us-central1
+export ZONE=us-central1-f
+
+gcloud dataproc clusters create hive-cluster \
+    --scopes sql-admin \
+    --image-version 1.4 \
+    --region ${REGION} \
+    --zone ${ZONE} \
+    --initialization-actions gs://goog-dataproc-initialization-actions-${REGION}/cloud-sql-proxy/cloud-sql-proxy.sh \
+    --properties hive:hive.metastore.warehouse.dir=gs://${PROJECT}-datalake/hive-warehouse \
+    --metadata "hive-metastore-instance=${PROJECT}:${REGION}:hive-metastore"
+```
+#### 1.3. Create a new Hive database called mortgage
+
+```bash
+export REGION=us-central1
+
+gcloud dataproc jobs submit hive \
+    --cluster hive-cluster \
+    --region ${REGION} \
+    --execute "CREATE DATABASE mortgage;"
+```
+
+#### 1.4. Check the new Hive database was created
+
+```bash
+export REGION=us-central1
+
+gcloud dataproc jobs submit hive \
+    --cluster hive-cluster \
+    --region ${REGION} \
+    --execute "SHOW DATABASES;"
+```
+
+### 2. Dataproc on GKE
+
+#### 2.1. Create a GKE cluster
 
 ```bash
 export GKE_CLUSTER=gke-single-zone-cluster 
@@ -75,7 +132,7 @@ gcloud beta container clusters create "${GKE_CLUSTER}" \
     --zone "${ZONE}"
 ```
 
-#### 1.2. Grant permissions 
+#### 2.2. Grant permissions
 
 Dataproc's service accounts needs to be granted Kubernetes Engine Admin IAM role
 
@@ -85,7 +142,7 @@ It will be in the format
 service-{project-number}@dataproc-accounts.iam.gserviceaccount.com
 ```
 
-#### 1.3. Create the Dataproc on GKE cluster
+#### 2.3. Create the Dataproc on GKE cluster
 
 ```bash
 export GKE_CLUSTER=gke-single-zone-cluster 
@@ -103,188 +160,38 @@ gcloud beta dataproc clusters create "${DATAPROC_GKE_CLUSTER}" \
     --bucket=${PROJECT}-datalake
 ```
 
-#### 1.4. Run Spark job using Dataproc on GKE cluster
+#### 2.4. Run Spark job using Dataproc on GKE cluster to convert CSV to Hive Tables
 
-This job will convert the CSV files to Parquet files
+This job will convert the CSV files to Hive tables files
+
+Submit job to Dataproc on GKE cluster with the job arguments
+
+- gs://${PROJECT}-datalake/landing/csv/mortgage-small [csv files location]
+- gs://${PROJECT}-datalake/hive-warehouse [hive warehouse location]
 
 ```bash
 export PROJECT=$(gcloud info --format='value(config.project)')
 export DATAPROC_GKE_CLUSTER=gke-cluster
-export REGION=us-central1 
+export REGION=us-central1
 
-gcloud dataproc jobs submit pyspark spark_csv_parquet.py \
+gcloud dataproc jobs submit pyspark spark_csv_hive_parquet.py \
   --cluster $DATAPROC_GKE_CLUSTER  \
   --region $REGION \
-   -- gs://${PROJECT}-datalake/landing/csv/mortgage-small gs://${PROJECT}-datalake/processed/parquet
+   -- gs://${PROJECT}-datalake/landing/csv/mortgage-small gs://${PROJECT}-datalake/hive-warehouse
 ```
 
-#### 1.5. Check the Parquet files were created
+#### 2.5. Check the Hive tables files were created
 
 ```bash
 gsutil ls -l gs://${PROJECT}-datalake/processed/parquet/*
 ```
 
-### 2. Data Engineer: Hive Metastore - save data in a Hive data warehouse
-
-#### 2.1. Create a CloudSQL instance to be used by the Hive metastore
-
 ```bash
-export REGION=us-central1
-export ZONE=us-central1-f
-
-gcloud sql instances create hive-metastore-cloudsql \
-    --database-version="MYSQL_5_7" \
-    --activation-policy=ALWAYS \
-    --zone ${ZONE}
-```
-
-#### 2.2. Create a Hive Dataproc cluster. 
-
-This is a long running cluster and will be your hive metastore service
-
-```bash
-export PROJECT=$(gcloud info --format='value(config.project)')
-export REGION=us-central1
-export ZONE=us-central1-f
-
-gcloud dataproc clusters create hive-cluster \
-    --scopes sql-admin \
-    --image-version 1.4 \
-    --region ${REGION} \
-    --zone ${ZONE} \
-    --initialization-actions gs://goog-dataproc-initialization-actions-${REGION}/cloud-sql-proxy/cloud-sql-proxy.sh \
-    --properties hive:hive.metastore.warehouse.dir=gs://${PROJECT}-datalake/hive-warehouse \
-    --metadata "hive-metastore-instance=${PROJECT}:${REGION}:hive-metastore-cloudsql"
+gsutil ls -l gs://${PROJECT}-datalake/hive-warehouse/*
 ```
 
 
-#### 2.3. Create a new Hive database called mortgage
-
-```bash
-export REGION=us-central1
-
-gcloud dataproc jobs submit hive \
-    --cluster hive-cluster \
-    --region ${REGION} \
-    --execute "CREATE DATABASE mortgage;"
-```
-
-#### 2.4. Check the new Hive database was created
-
-```bash
-export REGION=us-central1
-
-gcloud dataproc jobs submit hive \
-    --cluster hive-cluster \
-    --region ${REGION} \
-    --execute "SHOW DATABASES;"
-```
-
-#### 2.5. Create mortgage tables using Hive as an external hive table
-
-Training data
-
-```bash
-gcloud dataproc jobs submit hive \
-    --cluster hive-cluster \
-    --region ${REGION} \
-    --execute """
-      CREATE EXTERNAL TABLE mortgage.mortgage_small_train
-      (orig_channel FLOAT,
-      first_home_buyer FLOAT,
-      loan_purpose FLOAT,
-      property_type FLOAT,
-      occupancy_status FLOAT,
-      property_state FLOAT,
-      product_type FLOAT,
-      relocation_mortgage_indicator FLOAT,
-      seller_name FLOAT,
-      mod_flag FLOAT,
-      orig_interest_rate FLOAT,
-      orig_upb INT,
-      orig_loan_term INT,
-      orig_ltv FLOAT,
-      orig_cltv FLOAT,
-      num_borrowers FLOAT,
-      dti FLOAT,
-      borrower_credit_score FLOAT,
-      num_units INT,
-      zip INT,
-      mortgage_insurance_percent FLOAT,
-      current_loan_delinquency_status INT,
-      current_actual_upb FLOAT,
-      interest_rate FLOAT,
-      loan_age FLOAT,
-      msa FLOAT,
-      non_interest_bearing_upb FLOAT,
-      delinquency_12 INT)
-      STORED AS PARQUET
-      LOCATION 'gs://${PROJECT}-datalake/processed/parquet/mortgage_small_train';"""
-```
-
-Eval data
-
-```bash
-gcloud dataproc jobs submit hive \
-    --cluster hive-cluster \
-    --region ${REGION} \
-    --execute """
-      CREATE EXTERNAL TABLE mortgage.mortgage_small_eval
-      (orig_channel FLOAT,
-      first_home_buyer FLOAT,
-      loan_purpose FLOAT,
-      property_type FLOAT,
-      occupancy_status FLOAT,
-      property_state FLOAT,
-      product_type FLOAT,
-      relocation_mortgage_indicator FLOAT,
-      seller_name FLOAT,
-      mod_flag FLOAT,
-      orig_interest_rate FLOAT,
-      orig_upb INT,
-      orig_loan_term INT,
-      orig_ltv FLOAT,
-      orig_cltv FLOAT,
-      num_borrowers FLOAT,
-      dti FLOAT,
-      borrower_credit_score FLOAT,
-      num_units INT,
-      zip INT,
-      mortgage_insurance_percent FLOAT,
-      current_loan_delinquency_status INT,
-      current_actual_upb FLOAT,
-      interest_rate FLOAT,
-      loan_age FLOAT,
-      msa FLOAT,
-      non_interest_bearing_upb FLOAT,
-      delinquency_12 INT)
-      STORED AS PARQUET
-      LOCATION 'gs://${PROJECT}-datalake/processed/parquet/mortgage_small_eval';"""
-```
-
-#### 2.6. Run hive jobs to test tables was created
-
-```bash
-gcloud dataproc jobs submit hive \
-    --cluster hive-cluster \
-    --region ${REGION} \
-    --execute "
-      SELECT *
-      FROM mortgage.mortgage_small_train
-      LIMIT 10;"
-```
-
-```bash
-gcloud dataproc jobs submit hive \
-    --cluster hive-cluster \
-    --region ${REGION} \
-    --execute "
-      SELECT *
-      FROM mortgage.mortgage_small_eval
-      LIMIT 10;"
-```
-
-#### 2.7. Run Spark with Hive enabled to test table was created (Optional)
+#### 2.7. Run Spark with Hive enabled to create Mortgage table 
 
 ```bash
 export PROJECT=$(gcloud info --format='value(config.project)')
@@ -380,3 +287,10 @@ export PROJECT=$(gcloud info --format='value(config.project)')
 gsutil cp mortgage_xgboost_gpu.ipynb gs://${PROJECT}-datalake/notebooks/jupyter/mortgage_xgboost_gpu.ipynb
 ```
 
+## 5. Data Scientist & Data Engineer: Save model and run batch predictions using Cloud Composer (WIP)
+
+### 5.1 Create a Cloud Composer cluster
+
+### 5.2 Create Airflow DAG to run Dataproc job
+
+### 5.3 Upload DAG to Cloud Composer
