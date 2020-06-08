@@ -10,11 +10,11 @@ This codelab contains 4 parts to show how a data engineer and data scientist can
 
 ## Mortgage dataset
 
-This dataset is made avaiable by 
+The [Mortgage Data dataset](https://rapidsai.github.io/demos/datasets/mortgage-data) used in the demo is made available by NVDIA Rapids.
 
 ## Clone Repo
 
-Clone this repo and then change directory 
+Clone this repo and then change the directory.
 
 ```bash
 git clone https://github.com/tfayyaz/cloud-dataproc.git
