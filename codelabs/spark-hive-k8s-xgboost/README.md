@@ -126,7 +126,7 @@ gcloud dataproc jobs submit hive \
 #### 2.1. Create a GKE cluster
 
 ```bash
-export GKE_CLUSTER=gke-zone-cluster
+export GKE_CLUSTER=gke-single-zone-cluster
 export ZONE=us-central1-f
 
 gcloud beta container clusters create "${GKE_CLUSTER}" \
@@ -153,7 +153,7 @@ Edit the roles and add the role "Kubernetes Engine Admin" and press save.
 #### 2.3. Create the Dataproc on GKE cluster
 
 ```bash
-export GKE_CLUSTER=gke-zone-cluster
+export GKE_CLUSTER=gke-single-zone-cluster
 export DATAPROC_GKE_CLUSTER=gke-cluster
 export VERSION=1.4.27-beta
 export REGION=us-central1
@@ -188,6 +188,8 @@ gcloud dataproc jobs submit pyspark spark_csv_hive_parquet.py \
    -- gs://${PROJECT}-datalake/landing/csv/mortgage-small gs://${PROJECT}-datalake/hive-warehouse
 ```
 
+If the above does not work run this on the Dataproc Hive Cluster
+
 ```bash
 export PROJECT=$(gcloud info --format='value(config.project)')
 export DATAPROC_GKE_CLUSTER=hive-cluster
@@ -199,6 +201,20 @@ gcloud dataproc jobs submit pyspark spark_csv_hive_parquet.py \
    -- gs://${PROJECT}-datalake/landing/csv/mortgage-small gs://${PROJECT}-datalake/hive-warehouse
 ```
 
+#### 2.5. Check the Hive tables were created
+
+```bash
+export PROJECT=$(gcloud info --format='value(config.project)')
+export DATAPROC_GKE_CLUSTER=gke-cluster
+export REGION=us-central1
+
+gcloud dataproc jobs submit pyspark spark_read_hive.py \
+  --cluster $DATAPROC_GKE_CLUSTER  \
+  --region $REGION \
+  -- gs://${PROJECT}-datalake/hive-warehouse
+```
+
+If the above does not work run this on the Dataproc Hive Cluster
 
 ```bash
 export PROJECT=$(gcloud info --format='value(config.project)')
@@ -211,27 +227,6 @@ gcloud dataproc jobs submit pyspark spark_read_hive.py \
   -- gs://${PROJECT}-datalake/hive-warehouse
 ```
 
-#### 2.5. Check the Hive tables were created
-
-```bash
-export PROJECT=$(gcloud info --format='value(config.project)')
-export DATAPROC_GKE_CLUSTER=dataproc-gke-cluster
-export REGION=us-central1
-
-gcloud dataproc jobs submit pyspark spark_read_hive.py \
-  --cluster $DATAPROC_GKE_CLUSTER  \
-  --region $REGION \
-  -- gs://${PROJECT}-datalake/hive-warehouse
-```
-
-$ kubectl get pods --all-namespaces
-
-$ kubectl exec -itn dataproc-dataproc-gke-cluster-system dataproc-sparkoperator-bb7cf4d89-cqqrk -- /bin/bash
-
-$ kubectl exec -itn dataproc-gke-cluster-system dataproc-sparkoperator-5bcfdbcc95-jzsbb -- /bin/bash
-
-apt-get update
-apt-get install iputils-ping
 
 #### 2.7. Run Spark with Hive enabled to create Mortgage table
 
