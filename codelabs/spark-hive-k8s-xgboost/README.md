@@ -1,5 +1,7 @@
 # Apache Spark, Hive, Kubernetes and XGboost codelab
 
+![Spark Hive Jupyter XGBoost architecture](/spark-hive-jupyter-xgboost.png)
+
 This codelab contains 4 parts to show how a data engineer and data scientist can use features available in Cloud Dataproc.
 
 1. Data Engineer: Hive Metastore. Create Hive Metastore Cluster
@@ -96,6 +98,7 @@ gcloud dataproc clusters create hive-cluster \
     --properties hive:hive.metastore.warehouse.dir=gs://${PROJECT}-datalake/hive-warehouse \
     --metadata "hive-metastore-instance=${PROJECT}:${REGION}:hive-metastore"
 ```
+
 #### 1.3. Create a new Hive database called mortgage
 
 ```bash
@@ -123,7 +126,8 @@ gcloud dataproc jobs submit hive \
 #### 2.1. Create a GKE cluster
 
 ```bash
-export GKE_CLUSTER=gke-single-zone-cluster 
+export GKE_CLUSTER=gke-zone-cluster
+export ZONE=us-central1-f
 
 gcloud beta container clusters create "${GKE_CLUSTER}" \
     --scopes cloud-platform \
@@ -134,20 +138,24 @@ gcloud beta container clusters create "${GKE_CLUSTER}" \
 
 #### 2.2. Grant permissions
 
-Dataproc's service accounts needs to be granted Kubernetes Engine Admin IAM role
+Dataproc's service accounts needs to be granted "Kubernetes Engine Admin" IAM role.
 
-It will be in the format
+Go to https://console.cloud.google.com/iam-admin/iam
+
+Look for the service account email under the name "Google Cloud Dataproc Service Agent". It will be in the format
 
 ```bash
 service-{project-number}@dataproc-accounts.iam.gserviceaccount.com
 ```
 
+Edit the roles and add the role "Kubernetes Engine Admin" and press save.
+
 #### 2.3. Create the Dataproc on GKE cluster
 
 ```bash
-export GKE_CLUSTER=gke-single-zone-cluster 
-export DATAPROC_GKE_CLUSTER=gke-cluster 
-export VERSION=1.4.27-beta 
+export GKE_CLUSTER=gke-zone-cluster
+export DATAPROC_GKE_CLUSTER=gke-cluster
+export VERSION=1.4.27-beta
 export REGION=us-central1
 export ZONE=us-central1-f
 export PROJECT=$(gcloud info --format='value(config.project)')
@@ -180,18 +188,52 @@ gcloud dataproc jobs submit pyspark spark_csv_hive_parquet.py \
    -- gs://${PROJECT}-datalake/landing/csv/mortgage-small gs://${PROJECT}-datalake/hive-warehouse
 ```
 
-#### 2.5. Check the Hive tables files were created
-
 ```bash
-gsutil ls -l gs://${PROJECT}-datalake/processed/parquet/*
+export PROJECT=$(gcloud info --format='value(config.project)')
+export DATAPROC_GKE_CLUSTER=hive-cluster
+export REGION=us-central1
+
+gcloud dataproc jobs submit pyspark spark_csv_hive_parquet.py \
+  --cluster $DATAPROC_GKE_CLUSTER  \
+  --region $REGION \
+   -- gs://${PROJECT}-datalake/landing/csv/mortgage-small gs://${PROJECT}-datalake/hive-warehouse
 ```
 
+
 ```bash
-gsutil ls -l gs://${PROJECT}-datalake/hive-warehouse/*
+export PROJECT=$(gcloud info --format='value(config.project)')
+export DATAPROC_GKE_CLUSTER=hive-cluster
+export REGION=us-central1
+
+gcloud dataproc jobs submit pyspark spark_read_hive.py \
+  --cluster $DATAPROC_GKE_CLUSTER  \
+  --region $REGION \
+  -- gs://${PROJECT}-datalake/hive-warehouse
 ```
 
+#### 2.5. Check the Hive tables were created
 
-#### 2.7. Run Spark with Hive enabled to create Mortgage table 
+```bash
+export PROJECT=$(gcloud info --format='value(config.project)')
+export DATAPROC_GKE_CLUSTER=dataproc-gke-cluster
+export REGION=us-central1
+
+gcloud dataproc jobs submit pyspark spark_read_hive.py \
+  --cluster $DATAPROC_GKE_CLUSTER  \
+  --region $REGION \
+  -- gs://${PROJECT}-datalake/hive-warehouse
+```
+
+$ kubectl get pods --all-namespaces
+
+$ kubectl exec -itn dataproc-dataproc-gke-cluster-system dataproc-sparkoperator-bb7cf4d89-cqqrk -- /bin/bash
+
+$ kubectl exec -itn dataproc-gke-cluster-system dataproc-sparkoperator-5bcfdbcc95-jzsbb -- /bin/bash
+
+apt-get update
+apt-get install iputils-ping
+
+#### 2.7. Run Spark with Hive enabled to create Mortgage table
 
 ```bash
 export PROJECT=$(gcloud info --format='value(config.project)')
@@ -287,10 +329,71 @@ export PROJECT=$(gcloud info --format='value(config.project)')
 gsutil cp mortgage_xgboost_gpu.ipynb gs://${PROJECT}-datalake/notebooks/jupyter/mortgage_xgboost_gpu.ipynb
 ```
 
-## 5. Data Scientist & Data Engineer: Save model and run batch predictions using Cloud Composer (WIP)
+## 5. Data Scientist & Data Engineer: Save model and run batch predictions using Dataproc Workflows
 
-### 5.1 Create a Cloud Composer cluster
+Dataproc Workflows has 2 types of workflow templates.
 
-### 5.2 Create Airflow DAG to run Dataproc job
+1. Manged cluster - Create a new cluster and delete the cluster once the job has completed.
+2. Cluster selector - Select a pre-existing Dataproc cluster to the run the jobs (does not delete the cluster).
 
-### 5.3 Upload DAG to Cloud Composer
+This codelab will use option 1 to create a managed cluster workflow template.
+
+### 5.1 Create Dataproc managed cluster workflow Template
+
+```bash
+export REGION=us-central1
+
+gcloud dataproc workflow-templates create batch-loan-predictions \
+--region $REGION
+```
+
+### 5.2 Configure managed cluster for the workflow template
+
+```bash
+export PROJECT=$(gcloud info --format='value(config.project)')
+export CLUSTER_NAME=xgboost-workflow-cluster
+export GCS_BUCKET=${PROJECT}-datalake
+export REGION=us-central1
+export ZONE=us-central1-f
+export RAPIDS_SPARK_VERSION=2.x
+export RAPIDS_VERSION=1.0.0-Beta4
+
+gcloud beta dataproc workflow-templates set-managed-cluster batch-loan-predictions \
+    --cluster-name $CLUSTER_NAME \
+    --region $REGION \
+    --zone $ZONE \
+    --image-version 1.4-ubuntu18 \
+    --master-machine-type n1-standard-4 \
+    --worker-machine-type n1-standard-4 \
+    --optional-components=ANACONDA,JUPYTER \
+    --initialization-actions gs://goog-dataproc-initialization-actions-${REGION}/rapids/rapids.sh \
+    --metadata rapids-runtime=SPARK \
+    --bucket $GCS_BUCKET \
+    --properties "spark:spark.dynamicAllocation.enabled=false,spark:spark.shuffle.service.enabled=false,spark:spark.submit.pyFiles=/usr/lib/spark/jars/xgboost4j-spark_${RAPIDS_SPARK_VERSION}-${RAPIDS_VERSION}.jar"
+```
+
+### 5.3 Upload PySpark job to GCS
+
+```bash
+gsutil cp spark_batch_predictions.py gs://${PROJECT}-datalake/workflows/spark_batch_predictions.py
+```
+
+### 5.4 Add job to workflow template
+
+```bash
+export REGION=us-central1
+
+gcloud dataproc workflow-templates add-job pyspark gs://${PROJECT}-datalake/workflows/spark_batch_predictions.py \
+    --region $REGION \
+    --step-id run_batch_predictions \
+    --workflow-template batch-loan-predictions
+```
+
+### 5.5 Run workflow template
+
+```bash
+export REGION=us-central1
+
+gcloud dataproc workflow-templates instantiate batch-loan-predictions \
+--region $REGION
+```
