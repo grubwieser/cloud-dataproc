@@ -2,13 +2,13 @@
 
 ![Spark Hive Jupyter XGBoost architecture](spark-hive-jupyter-xgboost.png)
 
-This codelab contains 4 parts to show how a data engineer and data scientist can use features available in Cloud Dataproc.
+This codelab series contains 5 parts to show how a data engineer and data scientist can use various features available in Dataproc to build an end-to-end data and ML pipeline.
 
 1. Data Engineer: Hive Metastore. Create Hive Metastore Cluster
 2. Data Engineer: Dataproc on GKE - Transform CSV to Hive tables using Spark on k8s
 3. Data Scientist: Spark and Jupyter notebook to read data from Hive table for EDA
 4. Data Scientist: Spark, GPUs and Jupyter notebooks. Train a XGboost model using Spark and GPUs
-5. Data Scientist & Data Engineer: Save model and run batch predictions using Cloud Composer
+5. Data Scientist & Data Engineer: Save model and run batch predictions using Dataproc Workflows
 
 ## Mortgage dataset
 
