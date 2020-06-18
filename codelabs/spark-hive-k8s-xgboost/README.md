@@ -1,6 +1,6 @@
 # Apache Spark, Hive, Kubernetes and XGboost codelab
 
-![Spark Hive Jupyter XGBoost architecture](/spark-hive-jupyter-xgboost.png)
+![Spark Hive Jupyter XGBoost architecture](spark-hive-jupyter-xgboost.png)
 
 This codelab contains 4 parts to show how a data engineer and data scientist can use features available in Cloud Dataproc.
 
