@@ -1,21 +1,24 @@
 # Welcome to the Datalake Demo 
 
-Copyright 2020 Google LLC
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-    https://www.apache.org/licenses/LICENSE-2.0
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+    Copyright 2020 Google LLC
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+     https://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
 
 ![test](assets/Lake_architecture.png)
 
 
 
-Apache Spark on Dataproc - Bank Marketing Demo
+# Apache Spark on Dataproc - Bank Marketing Demo
 Demo video link - https://www.youtube.com/watch?v=RbLOi1Cgsmo&feature=emb_title
 
 Apache Spark on Dataproc - Bank Marketing Demo
@@ -24,7 +27,7 @@ Apache Spark on Dataproc provides features to allow you to build an end to end s
 
 This notebook can be easily adapted to show to build a model to predict if a loan should be approved as shown in the video above.
 
-1. Set-up Data Lake and Dataproc
+# Set-up Data Lake and Dataproc
 This demo is designed to be run on Google Cloud Dataproc. Follow these steps to create create a Dataproc Cluster and then copy the notebook to your notebooks folder.
 
 These steps should be run in the Google Cloud Shell
