@@ -88,31 +88,31 @@ gcloud dataproc clusters create $CLUSTER_NAME  \
 
 ## 4 - Create Dataproc Hub 
 
-Create a Dataproc Hub instance
+1) Create a Dataproc Hub instance
 Go to the Dataproc→Notebooks instances page in the Cloud Console.
 
-Click NEW INSTANCE→Dataproc Hub [BETA]
+2) Click NEW INSTANCE→Dataproc Hub [BETA]
 
-On the New notebook instance page, provide the following information:
+3) On the New notebook instance page, provide the following information:
 
-Instance name: Dataproc Hub instance name.
-Region - Select a region for the Dataproc Hub instance. Note: Dataproc clusters spawned by this Dataproc Hub instance will also be created in this region.
-For best performance, select a geographically close region.
-Zone: Select a zone within the selected region.
-Environment: Dataproc Hub [BETA]
+    1) Instance name: Dataproc Hub instance name.
+    2) Region - Select a region for the Dataproc Hub instance. Note: Dataproc clusters spawned by this Dataproc Hub instance will also be created in this region.
+    For best performance, select a geographically close region.
+    3) Zone: Select a zone within the selected region.
+    4) Environment: Dataproc Hub [BETA]
 
 Environment variables:
 container-env-file: Provide the name and the Cloud Storage location of your Dataproc Hub instance environment variables file.
 Example:
 gs://bucket-name/folder-name/environment-variable-filename.
 Select a script to run after creation: You can optionally insert or browse and select an initialization action script or executable to run on the spawned Dataproc cluster.
-Machine configuration:
+    5) Machine configuration:
 
 Machine Type - Select the machine type for the Compute Engine.
 Set other Machine configuration options.
-Click CREATE to launch the instance.
+    6) Click CREATE to launch the instance.
 
-When the instance is running, click the "JupyterLab" link on the Notebooks instances page to access the instance.
+4) When the instance is running, click the "JupyterLab" link on the Notebooks instances page to access the instance.
 
 
 
