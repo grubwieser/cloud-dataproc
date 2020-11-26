@@ -62,7 +62,7 @@ gcloud dataproc clusters create hive-cluster \
     --properties hive:hive.metastore.warehouse.dir=gs://${BUCKET_NAME}/hive-warehouse \
     --metadata "hive-metastore-instance=${PROJECT_ID}:${REGION}:hive-metastore-db"
 ```
-## 4 - Create Dataproc cluster with Jupyter, Rapids and GPUs
+## 4 - Create Dataproc cluster with Jupyter, Rapids and GPUs [deprecated]
 ### 4.1. Create Cluster
 ```
 export CLUSTER_NAME=jupyter-gpu-cluster
@@ -85,6 +85,38 @@ gcloud dataproc clusters create $CLUSTER_NAME  \
     --enable-component-gateway \
     --properties="^#^spark:spark.yarn.unmanagedAM.enabled=false"
 ```
+
+## 4 - Create Dataproc Hub 
+
+Create a Dataproc Hub instance
+Go to the Dataproc→Notebooks instances page in the Cloud Console.
+
+Click NEW INSTANCE→Dataproc Hub [BETA]
+
+On the New notebook instance page, provide the following information:
+
+Instance name: Dataproc Hub instance name.
+Region - Select a region for the Dataproc Hub instance. Note: Dataproc clusters spawned by this Dataproc Hub instance will also be created in this region.
+For best performance, select a geographically close region.
+Zone: Select a zone within the selected region.
+Environment: Dataproc Hub [BETA]
+
+Environment variables:
+container-env-file: Provide the name and the Cloud Storage location of your Dataproc Hub instance environment variables file.
+Example:
+gs://bucket-name/folder-name/environment-variable-filename.
+Select a script to run after creation: You can optionally insert or browse and select an initialization action script or executable to run on the spawned Dataproc cluster.
+Machine configuration:
+
+Machine Type - Select the machine type for the Compute Engine.
+Set other Machine configuration options.
+Click CREATE to launch the instance.
+
+When the instance is running, click the "JupyterLab" link on the Notebooks instances page to access the instance.
+
+
+
+
 ## 5 - Go to JupyterLab and copy this notebook
 Once your cluster is ready go follow these steps to copy this notebook:
 
