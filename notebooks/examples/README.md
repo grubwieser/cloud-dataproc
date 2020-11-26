@@ -18,9 +18,7 @@
 
 
 
-# Apache Spark on Dataproc - Bank Marketing Demo
-
-Apache Spark on Dataproc - Bank Marketing Demo
+# Apache Spark on Dataproc - Datalake Demo
 
 Apache Spark on Dataproc provides features to allow you to build an end to end solution for a wide number of use cases. This demo notebook focuses on using data from a financial services company who can build a data lake on Google Cloud and show how data enginers, data analysts and data scientists can use Apache Spark can work together to build a model to predict if a customer campaign will result in a deposit being made.
 
