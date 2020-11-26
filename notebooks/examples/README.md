@@ -32,25 +32,30 @@ This demo is designed to be run on Google Cloud Dataproc. Follow these steps to 
 
 These steps should be run in the Google Cloud Shell
 
-1.1 - Set env configuration
+## 1.1 - Set env configuration
+```
 export REGION=us-central1
 export PROJECT_ID=<project-id>
-1.2 - Create GCS bucket
+```
+## 1.2 - Create GCS bucket
 GCS bucket for Dataproc Clusters and Hive Warehouse
+```
 export BUCKET_NAME=${PROJECT_ID}-demo
-
 gsutil mb -l ${REGION} gs://${BUCKET_NAME}
-1.3 - Create a Hive Metastore
+```
+## 1.3 - Create a Hive Metastore
 Note: Dataproc Metastore is now available in private Alpha. This section can be replaced with Dataproc Metastore if you have access
 
-1.3.1. Create a Hive Cloud SQL database
+### 1.3.1. Create a Hive Cloud SQL database
+```
 gcloud sql instances create hive-metastore-db \
     --database-version="MYSQL_5_7" \
     --activation-policy=ALWAYS \
     --region ${REGION}
-1.3.2. Create a Hive Metastore Dataproc Cluster
+```
+### 1.3.2. Create a Hive Metastore Dataproc Cluster
 Once the Cloud SQL instance is created create a new Dataproc hive metastore cluster that connects to the cluster.
-
+```
 gcloud dataproc clusters create hive-cluster \
     --async \
     --scopes sql-admin \
@@ -59,8 +64,10 @@ gcloud dataproc clusters create hive-cluster \
     --initialization-actions gs://goog-dataproc-initialization-actions-${REGION}/cloud-sql-proxy/cloud-sql-proxy.sh \
     --properties hive:hive.metastore.warehouse.dir=gs://${BUCKET_NAME}/hive-warehouse \
     --metadata "hive-metastore-instance=${PROJECT_ID}:${REGION}:hive-metastore-db"
-1.4 - Create Dataproc cluster with Jupyter, Rapids and GPUs
-1.4.1. Create Cluster
+```
+## 1.4 - Create Dataproc cluster with Jupyter, Rapids and GPUs
+### 1.4.1. Create Cluster
+```
 export CLUSTER_NAME=jupyter-gpu-cluster
 export NUM_GPUS=2
 export NUM_WORKERS=2
@@ -80,7 +87,8 @@ gcloud dataproc clusters create $CLUSTER_NAME  \
     --bucket $BUCKET_NAME \
     --enable-component-gateway \
     --properties="^#^spark:spark.yarn.unmanagedAM.enabled=false"
-1.5 - Go to JupyterLab and copy this notebook
+```
+## 1.5 - Go to JupyterLab and copy this notebook
 Once your cluster is ready go follow these steps to copy this notebook:
 
 On the Dataproc cluster UI go to web interfaces tab
@@ -88,8 +96,10 @@ Cick on the link to open JupyterLab.
 Go the Local Disk folder in JupyterLab
 Click on the plus (+) button to open the launcher
 Open terminal and run the cmd below to copy the notebook to your cluster
-wget https://raw.githubusercontent.com/tfayyaz/cloud-dataproc/master/notebooks/examples/Spark%20-%20Bank%20Marketing%20Demo.ipynb
-1.6 - Run example code in this notebook broken down into these sections
+```
+wget https://raw.githubusercontent.com/tfayyaz/cloud-dataproc/master/notebooks/examples/Spark%20-%20Bank%20Marketing%20Demo.ipynb 
+```
+## 1.6 - Run example code in this notebook broken down into these sections
 Data Engineer - Convert CSV to Hive Tables (Parquet format)
 Data Analyst - Run SQL on tables and plot data
 Data Scientist - Create ML models with Spark
