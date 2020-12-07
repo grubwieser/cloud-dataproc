@@ -31,13 +31,13 @@ These steps should be run in the Google Cloud Shell
 
 ## 1 - Set env configuration
 ```
-export REGION=us-central1
+export REGION=europe-west3
 export PROJECT_ID=<project-id>
 ```
 ## 2 - Create GCS bucket
 GCS bucket for Dataproc Clusters and Hive Warehouse
 ```
-export BUCKET_NAME=${PROJECT_ID}-demo
+export BUCKET_NAME=${PROJECT_ID}-data
 gsutil mb -l ${REGION} gs://${BUCKET_NAME}
 ```
 ## 3 - Create Dataproc Hub 
